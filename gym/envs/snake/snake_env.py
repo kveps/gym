@@ -82,14 +82,8 @@ class Player:
         for i in range(0,self.length):
             surface.blit(image,(self.x[i],self.y[i])) 
  
-class Game:
-    def isCollision(self,x1,y1,x2,y2,bsize):
-        if x1 >= x2 and x1 <= x2 + bsize:
-            if y1 >= y2 and y1 <= y2 + bsize:
-                return True
-        return False
  
-class App:
+class SnakeApp:
  
     windowWidth = 800
     windowHeight = 600
@@ -101,9 +95,10 @@ class App:
         self._display_surf = None
         self._image_surf = None
         self._apple_surf = None
-        self.game = Game()
         self.player = Player(3) 
         self.apple = Apple(5,5)
+        self.ate_apple = False
+        self.collision = True
  
     def on_init(self):
         pygame.init()
@@ -112,33 +107,49 @@ class App:
         pygame.display.set_caption('Snake game')
         self._running = True
         self._image_surf = pygame.image.load("small_square_blue.png").convert()
-        self._apple_surf = pygame.image.load("small_square_blue.png").convert()
- 
+        self._apple_surf = pygame.image.load("small_square_orange.png").convert()
+        
     def on_event(self, event):
         if event.type == QUIT:
             self._running = False
  
-    def on_loop(self):
+    def check_status(self):
         self.player.update()
- 
+        self.ate_apple = False
+        self.collision = False
+
         # does snake eat apple?
         for i in range(0,self.player.length):
-            if self.game.isCollision(self.apple.x,self.apple.y,self.player.x[i], self.player.y[i],1):
+            if isCollision(self.apple.x,self.apple.y,self.player.x[i], self.player.y[i],1):
                 self.apple.x = randint(2,9) * 44
                 self.apple.y = randint(2,9) * 44
                 self.player.length = self.player.length + 1
- 
- 
+                self.ate_apple = True
+  
         # does snake collide with itself?
         for i in range(2,self.player.length):
-            if self.game.isCollision(self.player.x[0],self.player.y[0],self.player.x[i], self.player.y[i],1):
+            if isCollision(self.player.x[0],self.player.y[0],self.player.x[i], self.player.y[i],1):
                 print("You lose! Collision: ")
                 print("x[0] (" + str(self.player.x[0]) + "," + str(self.player.y[0]) + ")")
                 print("x[" + str(i) + "] (" + str(self.player.x[i]) + "," + str(self.player.y[i]) + ")")
-                exit(0)
- 
-        pass
- 
+                self.collision = True
+
+        # does snake collisde with walls?
+        for i in range(0, self.windowHeight):
+            if isCollision(self.player.x[0],self.player.y[0], 0, i) or isCollision(self.player.x[0],self.player.y[0], self.windowWidth, i):
+                self.collision = True
+        for i in range(0, self.windowWidth):
+            if isCollision(self.player.x[0],self.player.y[0], i, 0) or isCollision(self.player.x[0],self.player.y[0], i, self.windowHeight):
+                self.collision = True
+
+        return self.collision
+
+    def isCollision(self,x1,y1,x2,y2,bsize):
+        if x1 >= x2 and x1 <= x2 + bsize:
+            if y1 >= y2 and y1 <= y2 + bsize:
+                return True
+        return False
+
     def on_render(self):
         self._display_surf.fill((0,0,0))
         self.player.draw(self._display_surf, self._image_surf)
@@ -148,56 +159,49 @@ class App:
     def on_cleanup(self):
         pygame.quit()
  
-    def on_execute(self):
-        if self.on_init() == False:
-            self._running = False
- 
-        while( self._running ):
-            pygame.event.pump()
-            keys = pygame.key.get_pressed() 
- 
-            if (keys[K_RIGHT]):
-                self.player.moveRight()
- 
-            if (keys[K_LEFT]):
-                self.player.moveLeft()
- 
-            if (keys[K_UP]):
-                self.player.moveUp()
- 
-            if (keys[K_DOWN]):
-                self.player.moveDown()
- 
-            if (keys[K_ESCAPE]):
-                self._running = False
- 
-            self.on_loop()
-            self.on_render()
- 
-            time.sleep (40.0 / 1000.0);
-        self.on_cleanup()
+    def on_execute(self, action):
+        if (action == 0):
+            self.player.moveRight()
+
+        if (action == 1):
+            self.player.moveLeft()
+
+        if (action == 2):
+            self.player.moveUp()
+
+        if (action == 3):
+            self.player.moveDown()
+
+        game_over = self.check_status()
+        time.sleep (40.0 / 1000.0);
+
+        return game_over
+
+    def get_screen(self):
+        return self._display_surf
+
+    def get_score(self):
+        if(self.ate_apple):
+            return 100
+        else if(self.collision):
+            return -100
+        else:
+            return 1
 
 class SnakeEnv(gym.Env):
 
-    def __init__(self):        
-        pass
+    def __init__(self):
+        self.snake_app = SnakeApp()
 
     def step(self, action):        
-        self._take_action(action)
-        self.status = self.env.step()
-        reward = self._get_reward()
-        ob = self.env.getState()
-        episode_over = self.status != hfo_py.IN_GAME
+        episode_over = self.snake_app.execute(self, action)
+        reward = snake_app.get_score()
+        ob = snake_app.get_screen()
         return ob, reward, episode_over, {}
 
     def reset(self):
-        pass
+        self.snake_app.on_cleanup()
+        self.snake_app = SnakeApp()
 
     def render(self):
-        pass
-
-    def take_action(self, action):
-        pass
-
-    def get_reward(self):
-        return 0
+        self.snake_app.on_render()
