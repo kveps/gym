@@ -421,6 +421,15 @@ for reward_type in ['sparse', 'dense']:
         max_episode_steps=100,
     )
 
+# Snake
+# ----------------------------------------
+
+register(
+    id='Snake-v0',
+    entry_point='gym.envs.snake:SnakeEnv',
+    max_episode_steps=100
+)
+
 # Atari
 # ----------------------------------------
 
