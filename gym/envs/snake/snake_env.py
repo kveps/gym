@@ -99,6 +99,7 @@ class SnakeApp:
         self.apple = Apple(5,5)
         self.ate_apple = False
         self.collision = True
+        self.on_init()
  
     def on_init(self):
         pygame.init()
@@ -120,7 +121,7 @@ class SnakeApp:
 
         # does snake eat apple?
         for i in range(0,self.player.length):
-            if isCollision(self.apple.x,self.apple.y,self.player.x[i], self.player.y[i],1):
+            if self.isCollision(self.apple.x,self.apple.y,self.player.x[i], self.player.y[i]):
                 self.apple.x = randint(2,9) * 44
                 self.apple.y = randint(2,9) * 44
                 self.player.length = self.player.length + 1
@@ -128,23 +129,23 @@ class SnakeApp:
   
         # does snake collide with itself?
         for i in range(2,self.player.length):
-            if isCollision(self.player.x[0],self.player.y[0],self.player.x[i], self.player.y[i],1):
-                print("You lose! Collision: ")
-                print("x[0] (" + str(self.player.x[0]) + "," + str(self.player.y[0]) + ")")
-                print("x[" + str(i) + "] (" + str(self.player.x[i]) + "," + str(self.player.y[i]) + ")")
+            if self.isCollision(self.player.x[0],self.player.y[0],self.player.x[i], self.player.y[i]):
+                print("Self Collision")
                 self.collision = True
 
         # does snake collisde with walls?
         for i in range(0, self.windowHeight):
-            if isCollision(self.player.x[0],self.player.y[0], 0, i) or isCollision(self.player.x[0],self.player.y[0], self.windowWidth, i):
+            if self.isCollision(self.player.x[0],self.player.y[0], 0, i) or self.isCollision(self.player.x[0],self.player.y[0], self.windowWidth, i):
+                print("Wall Collision")
                 self.collision = True
         for i in range(0, self.windowWidth):
-            if isCollision(self.player.x[0],self.player.y[0], i, 0) or isCollision(self.player.x[0],self.player.y[0], i, self.windowHeight):
+            if self.isCollision(self.player.x[0],self.player.y[0], i, 0) or self.isCollision(self.player.x[0],self.player.y[0], i, self.windowHeight):
+                print("Wall Collision")
                 self.collision = True
 
         return self.collision
 
-    def isCollision(self,x1,y1,x2,y2,bsize):
+    def isCollision(self,x1,y1,x2,y2,bsize = 1):
         if x1 >= x2 and x1 <= x2 + bsize:
             if y1 >= y2 and y1 <= y2 + bsize:
                 return True
@@ -183,20 +184,29 @@ class SnakeApp:
     def get_score(self):
         if(self.ate_apple):
             return 100
-        else if(self.collision):
+        elif(self.collision):
             return -100
         else:
             return 1
 
 class SnakeEnv(gym.Env):
 
+    action_set = [0, 1, 2, 3]
+    num_actions = len(action_set)
+
     def __init__(self):
         self.snake_app = SnakeApp()
 
+    def get_num_actions(self):
+        return self.num_actions
+
     def step(self, action):        
-        episode_over = self.snake_app.execute(self, action)
-        reward = snake_app.get_score()
-        ob = snake_app.get_screen()
+        if action not in self.action_set:
+            print("Dont have action")
+            exit(0)
+        episode_over = self.snake_app.on_execute(action)
+        reward = self.snake_app.get_score()
+        ob = self.snake_app.get_screen()
         return ob, reward, episode_over, {}
 
     def reset(self):
