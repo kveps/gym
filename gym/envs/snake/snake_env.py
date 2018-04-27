@@ -11,9 +11,7 @@ import pygame
 import time
  
 class Apple:
-    x = 0
-    y = 0
-    step = 44
+    step = 50
  
     def __init__(self,x,y):
         self.x = x * self.step
@@ -21,50 +19,55 @@ class Apple:
  
     def draw(self, surface, image):
         surface.blit(image,(self.x, self.y)) 
- 
- 
+  
 class Player:
-    x = [0]
-    y = [0]
-    step = 44
+    step = 50
     direction = 0
     length = 3
  
-    updateCountMax = 2
-    updateCount = 0
- 
     def __init__(self, length):
+       self.x = [100]
+       self.y = [100]
        self.length = length
        for i in range(0,2000):
            self.x.append(-100)
            self.y.append(-100)
  
        # initial positions, no collision.
-       self.x[1] = 1*44
-       self.x[2] = 2*44
+       for i in range(1, self.length-1):
+           self.x[i] = self.x[0] - (i * self.step)
+           self.y[i] = self.y[0]
  
     def update(self):
  
-        self.updateCount = self.updateCount + 1
-        if self.updateCount > self.updateCountMax:
- 
-            # update previous positions
-            for i in range(self.length-1,0,-1):
-                self.x[i] = self.x[i-1]
-                self.y[i] = self.y[i-1]
- 
-            # update position of head of snake
-            if self.direction == 0:
-                self.x[0] = self.x[0] + self.step
-            if self.direction == 1:
-                self.x[0] = self.x[0] - self.step
-            if self.direction == 2:
-                self.y[0] = self.y[0] - self.step
-            if self.direction == 3:
-                self.y[0] = self.y[0] + self.step
- 
-            self.updateCount = 0
- 
+        # return if useless direction
+        if self.direction == 0:
+            if self.x[1] == self.x[0] + self.step: 
+                return
+        if self.direction == 1:
+            if self.x[1] == self.x[0] - self.step: 
+                return
+        if self.direction == 2:
+            if self.y[1] == self.y[0] - self.step: 
+                return
+        if self.direction == 3:
+            if self.y[1] == self.y[0] + self.step: 
+                return
+
+        # update previous positions
+        for i in range(self.length-1,0,-1):
+            self.x[i] = self.x[i-1]
+            self.y[i] = self.y[i-1]
+
+        # update position of head of snake
+        if self.direction == 0:
+            self.x[0] = self.x[0] + self.step
+        if self.direction == 1:
+            self.x[0] = self.x[0] - self.step
+        if self.direction == 2:
+            self.y[0] = self.y[0] - self.step
+        if self.direction == 3:
+            self.y[0] = self.y[0] + self.step
  
     def moveRight(self):
         self.direction = 0
@@ -85,10 +88,11 @@ class Player:
  
 class SnakeApp:
  
-    windowWidth = 800
-    windowHeight = 600
+    windowWidth = 1000
+    windowHeight = 1000
     player = 0
     apple = 0
+    step = 50
  
     def __init__(self):
         self._running = True
@@ -122,26 +126,26 @@ class SnakeApp:
         # does snake eat apple?
         for i in range(0,self.player.length):
             if self.isCollision(self.apple.x,self.apple.y,self.player.x[i], self.player.y[i]):
-                self.apple.x = randint(2,9) * 44
-                self.apple.y = randint(2,9) * 44
+                self.apple.x = randint(2,9) * self.step
+                self.apple.y = randint(2,9) * self.step
                 self.player.length = self.player.length + 1
                 self.ate_apple = True
   
         # does snake collide with itself?
         for i in range(2,self.player.length):
             if self.isCollision(self.player.x[0],self.player.y[0],self.player.x[i], self.player.y[i]):
-                print("Self Collision")
                 self.collision = True
+                return self.collision
 
         # does snake collisde with walls?
         for i in range(0, self.windowHeight):
             if self.isCollision(self.player.x[0],self.player.y[0], 0, i) or self.isCollision(self.player.x[0],self.player.y[0], self.windowWidth, i):
-                print("Wall Collision")
                 self.collision = True
+                return self.collision
         for i in range(0, self.windowWidth):
             if self.isCollision(self.player.x[0],self.player.y[0], i, 0) or self.isCollision(self.player.x[0],self.player.y[0], i, self.windowHeight):
-                print("Wall Collision")
                 self.collision = True
+                return self.collision
 
         return self.collision
 
@@ -174,7 +178,7 @@ class SnakeApp:
             self.player.moveDown()
 
         game_over = self.check_status()
-        time.sleep (40.0 / 1000.0);
+        time.sleep (50.0 / 1000.0);
 
         return game_over
 
