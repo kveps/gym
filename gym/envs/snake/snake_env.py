@@ -4,6 +4,8 @@ import gym
 from gym import error, spaces
 from gym import utils
 from gym.utils import seeding
+import cv2
+import matplotlib.image as mpimg
 
 from pygame.locals import *
 from random import randint
@@ -40,19 +42,19 @@ class Player:
  
     def update(self):
  
-        # return if useless direction
+        # redefine if useless direction
         if self.direction == 0:
-            if self.x[1] == self.x[0] + self.step: 
-                return
-        if self.direction == 1:
+            if self.x[1] == self.x[0] + self.step:
+                self.direction = 1
+        elif self.direction == 1:
             if self.x[1] == self.x[0] - self.step: 
-                return
-        if self.direction == 2:
+                self.direction = 0
+        elif self.direction == 2:
             if self.y[1] == self.y[0] - self.step: 
-                return
-        if self.direction == 3:
+                self.direction = 3
+        elif self.direction == 3:
             if self.y[1] == self.y[0] + self.step: 
-                return
+                self.direction = 2
 
         # update previous positions
         for i in range(self.length-1,0,-1):
@@ -69,6 +71,8 @@ class Player:
         if self.direction == 3:
             self.y[0] = self.y[0] + self.step
  
+        # print self.x[0], self.y[0] 
+
     def moveRight(self):
         self.direction = 0
  
@@ -88,11 +92,12 @@ class Player:
  
 class SnakeApp:
  
-    windowWidth = 1000
-    windowHeight = 1000
+    windowWidth = 500
+    windowHeight = 500
     player = 0
     apple = 0
     step = 50
+    disp_data = None
  
     def __init__(self):
         self._running = True
@@ -107,17 +112,20 @@ class SnakeApp:
  
     def on_init(self):
         pygame.init()
-        self._display_surf = pygame.display.set_mode((self.windowWidth,self.windowHeight), pygame.HWSURFACE)
+        self._display_surf = pygame.display.set_mode([self.windowWidth,self.windowHeight])
  
         pygame.display.set_caption('Snake game')
         self._running = True
-        self._image_surf = pygame.image.load("small_square_blue.png").convert()
-        self._apple_surf = pygame.image.load("small_square_orange.png").convert()
+        self._image_surf = pygame.image.load("/home/karthik/gym/gym/envs/snake/small_square_blue.png").convert()
+        self._apple_surf = pygame.image.load("/home/karthik/gym/gym/envs/snake/small_square_orange.png").convert()
         
     def on_event(self, event):
         if event.type == QUIT:
             self._running = False
  
+    def get_screen_size(self):
+        return (self.windowWidth, self.windowHeight)
+
     def check_status(self):
         self.player.update()
         self.ate_apple = False
@@ -126,8 +134,8 @@ class SnakeApp:
         # does snake eat apple?
         for i in range(0,self.player.length):
             if self.isCollision(self.apple.x,self.apple.y,self.player.x[i], self.player.y[i]):
-                self.apple.x = randint(2,9) * self.step
-                self.apple.y = randint(2,9) * self.step
+                self.apple.x = randint(2,8) * self.step
+                self.apple.y = randint(2,8) * self.step
                 self.player.length = self.player.length + 1
                 self.ate_apple = True
   
@@ -139,11 +147,11 @@ class SnakeApp:
 
         # does snake collisde with walls?
         for i in range(0, self.windowHeight):
-            if self.isCollision(self.player.x[0],self.player.y[0], 0, i) or self.isCollision(self.player.x[0],self.player.y[0], self.windowWidth, i):
+            if self.isCollision(self.player.x[0],self.player.y[0], 0 - 2 * self.step, i - 2 * self.step) or self.isCollision(self.player.x[0],self.player.y[0], self.windowWidth - self.step, i - 2 * self.step):
                 self.collision = True
                 return self.collision
         for i in range(0, self.windowWidth):
-            if self.isCollision(self.player.x[0],self.player.y[0], i, 0) or self.isCollision(self.player.x[0],self.player.y[0], i, self.windowHeight):
+            if self.isCollision(self.player.x[0],self.player.y[0], i - 2 * self.step, 0 - 2 * self.step) or self.isCollision(self.player.x[0],self.player.y[0], i - 2 * self.step, self.windowHeight - self.step):
                 self.collision = True
                 return self.collision
 
@@ -157,8 +165,8 @@ class SnakeApp:
 
     def on_render(self):
         self._display_surf.fill((0,0,0))
-        self.player.draw(self._display_surf, self._image_surf)
         self.apple.draw(self._display_surf, self._apple_surf)
+        self.player.draw(self._display_surf, self._image_surf)
         pygame.display.flip()
  
     def on_cleanup(self):
@@ -185,13 +193,22 @@ class SnakeApp:
     def get_screen(self):
         return self._display_surf
 
+    def get_screen_state(self):
+        self.disp_data = pygame.surfarray.array3d(self._display_surf)
+        # pygame.image.save(self._display_surf, "image.jpg")
+        # im = cv2.imread("image.jpg")
+        # b,g,r = cv2.split(im)  
+        # im = cv2.merge([r,g,b])
+        self.disp_data.swapaxes(0,1)
+        return self.disp_data
+
     def get_score(self):
         if(self.ate_apple):
-            return 100
-        elif(self.collision):
-            return -100
-        else:
             return 1
+        elif(self.collision):
+            return -1
+        else:
+            return 0
 
 class SnakeEnv(gym.Env):
 
@@ -210,12 +227,17 @@ class SnakeEnv(gym.Env):
             exit(0)
         episode_over = self.snake_app.on_execute(action)
         reward = self.snake_app.get_score()
-        ob = self.snake_app.get_screen()
+        ob = self.snake_app.get_screen_state()
         return ob, reward, episode_over, {}
 
     def reset(self):
         self.snake_app.on_cleanup()
         self.snake_app = SnakeApp()
+        ob = self.snake_app.get_screen_state()
+        return ob
 
     def render(self):
         self.snake_app.on_render()
+
+    def get_state_size(self):
+        return self.snake_app.get_screen_size()    
